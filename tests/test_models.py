@@ -3,6 +3,7 @@
 Classes:
     ExpiringTokenTestCase: Tests ExpiringToken.
 """
+from django.utils import timezone
 from datetime import timedelta
 from time import sleep
 
@@ -43,3 +44,18 @@ class ExpiringTokenTestCase(TestCase):
         with self.settings(EXPIRING_TOKEN_LIFESPAN=timedelta(milliseconds=1)):
             sleep(0.001)
             self.assertTrue(self.token.expired())
+
+    def test_refresh(self):
+        """Check that a refresh updates the created time"""
+        pre_refresh_time = timezone.now()
+        self.token.refresh()
+        self.assertTrue(self.token.created > pre_refresh_time)
+
+    def test_refresh_after_expiration(self):
+        """Check that a refresh doesn't change the time on an expired token"""
+        old_created_time = self.token.created
+        with self.settings(EXPIRING_TOKEN_LIFESPAN=timedelta(milliseconds=1)):
+            sleep(0.001)
+            self.assertTrue(self.token.expired())
+            self.token.refresh()
+            self.assertEqual(self.token.created, old_created_time)
